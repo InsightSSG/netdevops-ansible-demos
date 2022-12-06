@@ -169,8 +169,9 @@ playbooks are executed using the following command structure:
 ansible-playbook <<group_name>> -i <<inventory_file>> <<playbook_name>>
 ``` 
 
-### ios_command 
- [ios_command](https://docs.ansible.com/ansible/latest/collections/cisco/ios/ios_command_module.html#ansible-collections-cisco-ios-ios-command-module)
+### ios_command/nxos_command
+ [ios_command](https://docs.ansible.com/ansible/latest/collections/cisco/ios/ios_command_module.html) and 
+ [nxos_command](https://docs.ansible.com/ansible/latest/collections/cisco/nxos/nxos_command_module.html)
   allows us to send arbitrary commands to the device and return results.  We can specify wait_for behavior to list conditions 
   before moving forward with a task.  This can be for a single line or other commands that require parent 
  configuration and then chid commands (e.g. acl name then acl entries). 
@@ -202,13 +203,15 @@ Execute playbook
 ansible-playbook -i inventory.yml 01-run_show_version/main.yml -u cisco -k
 ```
 
-Notice when the playbook is ran we get to OKs from 10.10.20.175 and .176, but failed from .177 and .178.  This is due 
-to the latter being NXOS devices however we specified the network_os and cisco.ios.  
+Notice when we ran the playbook we get information for both the IOS and the NXOS devices back and fail one device, 10.10.20.174.
 
-To get around this, specify the group with the ```-l devnet_ios``` option being added to the command.
+We can specify specific groups or parents using the ```-l``` option.  See below for a few examples of running the command 
+against different inventory groups.
 
 ```
-ansible-playbook -l devnet_ios -i inventory.yml 01-run_show_version/main.yml -u cisco -k
+ansible-playbook -l devnet 01-run_show_version/main.yml
+ansible-playbook -l devnet_ios 01-run_show_version/main.yml
+ansible-playbook -l devnet_nxos 01-run_show_version/main.yml
 ```
 
 #### 02-run_show_arp
@@ -216,46 +219,155 @@ ansible-playbook -l devnet_ios -i inventory.yml 01-run_show_version/main.yml -u 
 This playbook will get the 'show arp' info from all devices in the inventory file.
 
 ```
-
-
+ansible-playbook 02-show_arp/main.yml 
 ``` 
 
 
 #### 03-run_show_mac_address_address-table
 
 ```
-
-```
+ansible-playbook 03-show_run_save_to_disk/main.yml 
+``` 
 
 #### 04-save_multiple_commands_to_text
 This playbook will save multiple commands to a text file using the ios_command modules.  Two versions have been created.  
 The file main.yml is targeted to IOS devices.  The file main_nxos.yml is targeted to NXOS devices.
+```
+ansible-playbook 04-save_multiple_commands_to_text/main.yml 
+``` 
 
 #### 05-run_commands_that_require_prompt
-This playbook will run a command that requires user input before continuing.
+This playbook will run a command that typically requires user input before continuing.  Ansible will answer the prompt 
+per the playbook specifications.
+```
+ansible-playbook 05-run_commands_that_require_prompt/main.yml 
+``` 
 
-
-### ios_config
- 
+### ios_config/nxos_config
+  [ios_config](https://docs.ansible.com/ansible/latest/collections/cisco/ios/ios_config_module.html) and 
+  [nxos_config](https://docs.ansible.com/ansible/latest/collections/cisco/nxos/nxos_config_module.html)
+  allows us to send arbitrary configurations to the device and return results.  Consider this command as going into ```config t```
+  mode and running any command you want.  Parent commands like interface or routing process can be specified seperately from 
+  children commands.  Anything from hostname, NTP, SNMP, ACLs, OSPF, Interface, Routing Protocol, QoS, etc can be configured 
+  using the ios_config module.  Look at the examples below and refer to official documentation linked above for a better
+   understanding of how to use this module.  
+  
 #### 101-configure_loopback_setting
-
+This playbook will configure Loopback 10 interface using variables stored in the host_var directory.
+```
+ansible-playbook 101-configure_loopback_setting/main.yml 
+``` 
 #### 102-configure_helpers_on_multiple_interfaces
+This playbook will configure helper addresses on multiple interfaces.  Helper and specified interfaces are configured in 
+the group_vars directory and only apply to the NXOS devices for this example.  
+```
+ansible-playbook 102-configure_helpers_on_multiple_interfaces/main.yml 
+``` 
 
 #### 103-configure_new_acl
+This playbook will configure a new ACL called VTY_ACL and put all RFC1918 in the ACL.  Parent commands specify the top level 
+command with the individual lines being entered under the parent.  Notice the match: exact.  If the ACL doesn't match exactly 
+(including sequence numbers), ansible will execute the 'before' line and then reapply the configuration.  This ensures your ACLs
+ always match your intent and golden config.
+```
+ansible-playbook 103-configure_new_acl/main.yml 
+``` 
  
 #### 104-compare_startup_to_running_config
 
 
 
-### ios_facts
-
+### ios_facts/nxos_facts
+  [ios_facts](https://docs.ansible.com/ansible/latest/collections/cisco/ios/ios_facts_module.html) and 
+  [nxos_facts](https://docs.ansible.com/ansible/latest/collections/cisco/nxos/nxos_facts_module.html) allow us to pull 
+  generic details about the device.  Every platform allows a bit different facts to be retrieved but typically allow things like 
+  version information, hardware details, interfaces, configurations, etc.  The examples below show how to use the basic 
+  facts module as well as gather a subset of the facts, exclude specific facts, or gather facts and save to files using 
+  jinja2 templates.
+  
 #### 201-gather_legacy_facts
-
+This is a basic playbook to show how to use the individual tasks to run gather_facts.  This would be useful if you didn't 
+want to run gather_facts against all devices or if you wanted something more than the minimum (default) gather_facts. 
+```
+ansible-playbook 201-gather_legacy_facts/main.yml 
+``` 
 
 #### 202-gather_subset_legacy_facts
+This is a basic playbook to show how to get facts by category from devices. Supported tags are: config, hardware, interfaces, 
+min, or all_facts)
+```
+ansible-playbook 202-gather_subset_legacy_facts/main.yml --tags config 
+```
+
+```
+ansible-playbook 202-gather_subset_legacy_facts/main.yml --tags hardware 
+``` 
+
+```
+ansible-playbook 202-gather_subset_legacy_facts/main.yml --tags interfaces
+``` 
+
+```
+ansible-playbook 202-gather_subset_legacy_facts/main.yml --tags min 
+``` 
+
+```
+ansible-playbook 202-gather_subset_legacy_facts/main.yml --tags all_facts 
+```  
 
 #### 203-exclude_subset_from_facts
+Similiar to the previous example but this time we will exclude facts using the ! exclusion in the playbook.  
+Use the following tags to limit playbook targets (interfaces, config)
+
+```
+ansible-playbook 203-exclude_subset_from_facts/main.yml
+```
+
+```
+ansible-playbook 203-exclude_subset_from_facts/main.yml --tags interfaces 
+``` 
+
+```
+ansible-playbook 203-exclude_subset_from_facts/main.yml --tags configs
+``` 
+
+#### 204-gather_network_resources_and_minimal_legacy
+In addition to legacy facts discussed already, the facts can pull back more details including L3 configuration, interfaces, neighbors, 
+etc.   In this example we will use the network_resources subcomponent of facts to pull back a subsection of the supported commands.  
+Tags supported include interfaces, l3_interfaces, acls, ospf_interfaces, and all_resources. 
+
+```
+ansible-playbook 204-gather_network_resources_and_minimal_legacy/main.yml
+```
+
+```
+ansible-playbook 204-gather_network_resources_and_minimal_legacy/main.yml --tags interfaces 
+``` 
+
+```
+ansible-playbook 204-gather_network_resources_and_minimal_legacy/main.yml --tags l3_interfaces
+``` 
+
+```
+ansible-playbook 204-gather_network_resources_and_minimal_legacy/main.yml --tags acls
+``` 
 
 
-#### 204-gather_l2_facts_and_minimal_legacy
+```
+ansible-playbook 204-gather_network_resources_and_minimal_legacy/main.yml --tags ospf_interfaces
+``` 
 
+
+```
+ansible-playbook 204-gather_network_resources_and_minimal_legacy/main.yml --tags all_resources
+``` 
+
+#### 205-gather_facts_save_using_jinja2_templates
+Two main actions happen in this playbook.  Facts are gathered and then stored to a file in a new directory called facts.  
+One file is based on a jinja2 template stored inline in our playbook.  The other uses a template in the /templates/ directory 
+of the playbook.  In addition a backup is made of the configuration and stored in a new folder called /backups/ with each 
+file being uniquely named after the hostname. 
+
+```
+ansible-playbook 205-gather_facts_save_using_jinja2_templates/main.yml
+```
